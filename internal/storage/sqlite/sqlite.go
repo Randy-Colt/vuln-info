@@ -21,9 +21,17 @@ func New(storagePath string) (*Storage, error) {
     }
 
     stmt, err := db.Prepare(`
-    CREATE TABLE IF NOT EXISTS threat(
+        CREATE TABLE IF NOT EXISTS threat(
+            hash TEXT UNIQUE NOT NULL,
+            behavior TEXT NOT NULL,
+            platform TEXT NOT NULL,
+            family TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            file_size INTEGER NOT NULL,
+            file_type TEXT DEFAULT undefined,
+            file_path TEXT NOT NULL
         );
-    CREATE INDEX IF NOT EXISTS  ON threat();
+        CREATE INDEX IF NOT EXISTS  ON threat();
     `)
     if err != nil {
         return nil, fmt.Errorf("%s: %w", op, err)
