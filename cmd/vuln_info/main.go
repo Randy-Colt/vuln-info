@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"vulns/internal/config"
+	"threat-info/internal/config"
 )
 
 func main() {

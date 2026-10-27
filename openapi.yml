@@ -122,9 +122,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Внутренняя ошибка сервера
-
-
-content:
+          content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
