@@ -14,5 +14,4 @@ type Threat struct {
 	FileSize  int64
 	FileType  sql.Null[string]
 	CreatedAt time.Time
-	UpdatedAt sql.Null[time.Time]
 }

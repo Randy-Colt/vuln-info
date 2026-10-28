@@ -44,22 +44,11 @@ func New(storagePath string) (*Storage, error) {
             file_size   INTEGER NOT NULL,
             file_type   TEXT,
             created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-            updated_at  TEXT
         );
-        CREATE TRIGGER IF NOT EXISTS trg_threat_updated_at
-        AFTER UPDATE ON threat
-        FOR EACH ROW
-        WHEN OLD.updated_at = NEW.updated_at
-        BEGIN
-            UPDATE threat
-            SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-            WHERE md5 = NEW.md5;
-        END;
     `)
     if err != nil {
         return nil, fmt.Errorf("%s: %w", op, err)
     }
-    
 
 	getStmt, err := db.Prepare(`
 		SELECT md5, behavior, platform, family, file_size, file_type, created_at, updated_at
@@ -83,7 +72,7 @@ func New(storagePath string) (*Storage, error) {
 		UPDATE threat
 		SET behavior = ?, platform = ?, family = ?, file_size = ?, file_type = ?
 		WHERE md5 = ?
-        RETURNING md5, behavior, platform, family, file_size, file_type`)
+        RETURNING md5, behavior, platform, family, file_size, file_type, created_at`)
 	if err != nil {
 		getStmt.Close()
 		setStmt.Close()
@@ -108,7 +97,7 @@ func (s *Storage) Threat(ctx context.Context, md5Hash string) (models.Threat, er
 	var t models.Threat
 	err := row.Scan(
 		&t.MD5, &t.Behavior, &t.Platform, &t.Family,
-		&t.FileSize, &t.FileType, &t.CreatedAt, &t.UpdatedAt,
+		&t.FileSize, &t.FileType, &t.CreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -130,17 +119,15 @@ func (s *Storage) Create(ctx context.Context, t models.Threat) (models.Threat, e
 	var created models.Threat
 	err := row.Scan(
 		&created.MD5, &created.Behavior, &created.Platform, &created.Family,
-		&created.FileSize, &created.FileType, &created.CreatedAt, &created.UpdatedAt,
+		&created.FileSize, &created.FileType, &created.CreatedAt,
 	)
 	if err != nil {
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) {
-			if sqliteErr.ExtendedCode == sqlite3.ErrConstraintPrimaryKey ||
-				sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+		if sqliteErr, ok := errors.AsType[sqlite3.Error](err); ok {
+			if sqliteErr.ExtendedCode == sqlite3.ErrConstraintPrimaryKey {
 				return models.Threat{}, fmt.Errorf("%s: %w", op, storage.ErrThreatExists)
 			}
 		}
-		return models.Threat{}, fmt.Errorf("%s: scan: %w", op, err)
+		return models.Threat{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return created, nil
