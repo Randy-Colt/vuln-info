@@ -3,6 +3,6 @@ package storage
 import "errors"
 
 var (
-	ErrVulnNotFound = errors.New("threat not found")
-	ErrVulnExists = errors.New("threat already exists")
+	ErrThreatNotFound = errors.New("threat not found")
+	ErrThreatExists = errors.New("threat already exists")
 )

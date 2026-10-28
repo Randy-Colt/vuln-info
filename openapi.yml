@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Information Exchange Service
-  description: API для обмена информацией об угрозах. 
+  description: API для обмена информацией об угрозах.
   version: 1.0.0
 
 paths:
@@ -11,14 +11,7 @@ paths:
       description: Возвращает полную информацию об угрозе для указанного MD5-хеша.
       operationId: getInfoByMd5
       parameters:
-        - name: md5
-          in: path
-          required: true
-          description: MD5-хеш файла (32 символа, шестнадцатеричные цифры)
-          schema:
-            type: string
-            pattern: '^[a-fA-F0-9]{32}$'
-            example: "d41d8cd98f00b204e9800998ecf8427e"
+        - $ref: '#/components/parameters/Md5Path'
       responses:
         '200':
           description: Успешный ответ с информацией об угрозе
@@ -26,14 +19,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ThreatResponse'
-        '404':
-          description: Угроза с указанным MD5 не найден
+        '400':
+          description: Некорректный формат MD5
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '400':
-          description: Некорректный формат MD5
+        '404':
+          description: Угроза с указанным MD5 не найдена
           content:
             application/json:
               schema:
@@ -47,17 +40,10 @@ paths:
 
     put:
       summary: Обновить информацию об угрозе по MD5
-      description: Заменяет информацию о существующей угрозе
+      description: Полностью заменяет информацию о существующей угрозе. Поле `md5` неизменяемо.
       operationId: updateThreat
       parameters:
-        - name: md5
-          in: path
-          required: true
-          description: MD5-хеш обновляемой записи
-          schema:
-            type: string
-            pattern: '^[a-fA-F0-9]{32}$'
-            example: "d41d8cd98f00b204e9800998ecf8427e"
+        - $ref: '#/components/parameters/Md5Path'
       requestBody:
         required: true
         content:
@@ -78,7 +64,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Угроза с указанным MD5 не найден
+          description: Угроза с указанным MD5 не найдена
           content:
             application/json:
               schema:
@@ -104,12 +90,18 @@ paths:
       responses:
         '201':
           description: Запись успешно создана
+          headers:
+            Location:
+              description: URL созданной записи
+              schema:
+                type: string
+                example: "/info/d41d8cd98f00b204e9800998ecf8427e"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ThreatResponse'
         '400':
-          description: Некорректные данные запроса (например, невалидный MD5)
+          description: Некорректные данные запроса (например, невалидный MD5 или имя)
           content:
             application/json:
               schema:
@@ -128,12 +120,24 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
 components:
+  parameters:
+    Md5Path:
+      name: md5
+      in: path
+      required: true
+      description: MD5-хеш файла (32 шестнадцатеричных символа)
+      schema:
+        type: string
+        pattern: '^[a-fA-F0-9]{32}$'
+        example: "d41d8cd98f00b204e9800998ecf8427e"
+
   schemas:
     ThreatCreateRequest:
       type: object
       required:
         - md5
         - name
+        - file_size
       properties:
         md5:
           type: string
@@ -142,20 +146,50 @@ components:
           example: "d41d8cd98f00b204e9800998ecf8427e"
         name:
           type: string
-          description: Название угрозы
+          description: |
+            Название угрозы в формате Kaspersky: `<behavior>.<platform>.<family>[.<variant>]`.
+            Минимум три части, разделённые точкой.
           example: "Trojan.Win32.Generic"
+        file_size:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Размер файла в байтах
+          example: 102400
+        file_type:
+          type: string
+          nullable: true
+          description: Тип файла (pe, elf, script, ...). null или отсутствие — неизвестно.
+          example: "pe"
+
     ThreatUpdateRequest:
       type: object
       required:
         - name
+        - file_size
       properties:
         name:
           type: string
-          description: Название угрозы
+          description: То же, что и в ThreatCreateRequest — `<behavior>.<platform>.<family>[.<variant>]`
           example: "Trojan.Win32.Generic"
-        
+        file_size:
+          type: integer
+          format: int64
+          minimum: 0
+          example: 102400
+        file_type:
+          type: string
+          nullable: true
+          description: null или отсутствие — сбросить тип в null (PUT полностью заменяет запись).
+          example: "pe"
+
     ThreatResponse:
       type: object
+      required:
+        - md5
+        - name
+        - file_size
+        - created_at
       properties:
         md5:
           type: string
@@ -164,8 +198,31 @@ components:
           example: "d41d8cd98f00b204e9800998ecf8427e"
         name:
           type: string
-          description: Название угрозы
+          description: |
+            Название угрозы, собранное как `<behavior>.<platform>.<family>`
+            из соответствующих полей хранилища.
           example: "Trojan.Win32.Generic"
+        file_size:
+          type: integer
+          format: int64
+          minimum: 0
+          example: 102400
+        file_type:
+          type: string
+          nullable: true
+          description: null, если тип файла неизвестен
+          example: "pe"
+        created_at:
+          type: string
+          format: date-time
+          description: Время создания записи (UTC)
+          example: "2024-01-15T10:30:45.123Z"
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Время последнего обновления (UTC). null, если запись ещё не обновлялась.
+          example: "2024-01-16T12:00:00.000Z"
 
     ErrorResponse:
       type: object
