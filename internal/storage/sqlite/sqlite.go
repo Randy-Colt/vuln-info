@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"threat-info/internal/domain"
 	"threat-info/internal/storage"
 	"threat-info/internal/storage/models"
 
@@ -89,68 +90,66 @@ func New(storagePath string) (*Storage, error) {
 }
 
 
-func (s *Storage) Threat(ctx context.Context, md5Hash string) (models.Threat, error) {
+func (s *Storage) Threat(ctx context.Context, md5Hash string) (domain.Threat, error) {
     const op = "storage.sqlite.Threat"
 
 	row := s.getThreatStmt.QueryRowContext(ctx, md5Hash)
 
-	var t models.Threat
+	var m models.Threat
 	err := row.Scan(
-		&t.MD5, &t.Behavior, &t.Platform, &t.Family,
-		&t.FileSize, &t.FileType, &t.CreatedAt,
+		&m.MD5, &m.Behavior, &m.Platform, &m.Family,
+		&m.FileSize, &m.FileType, &m.CreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.Threat{}, fmt.Errorf("%s: %w", op, storage.ErrThreatNotFound)
+			return domain.Threat{}, fmt.Errorf("%s: %w", op, storage.ErrThreatNotFound)
 		}
-		return models.Threat{}, fmt.Errorf("%s: scan: %w", op, err)
+		return domain.Threat{}, fmt.Errorf("%s: scan: %w", op, err)
 	}
 
-	return t, nil
+	return toDomain(m), nil
 }
 
-func (s *Storage) Create(ctx context.Context, t models.Threat) (models.Threat, error) {
+func (s *Storage) Create(ctx context.Context, t domain.Threat) (domain.Threat, error) {
 	const op = "storage.sqlite.Create"
 
-	row := s.setThreatStmt.QueryRowContext(ctx,
-		t.MD5, t.Behavior, t.Platform, t.Family, t.FileSize, t.FileType,
+	m := toModel(t)
+	err := s.setThreatStmt.QueryRowContext(ctx,
+		m.MD5, m.Behavior, m.Platform, m.Family, m.FileSize, m.FileType,
+	).Scan(
+		&m.MD5, &m.Behavior, &m.Platform, &m.Family,
+		&m.FileSize, &m.FileType, &m.CreatedAt,
 	)
 
-	var created models.Threat
-	err := row.Scan(
-		&created.MD5, &created.Behavior, &created.Platform, &created.Family,
-		&created.FileSize, &created.FileType, &created.CreatedAt,
-	)
 	if err != nil {
 		if sqliteErr, ok := errors.AsType[sqlite3.Error](err); ok {
 			if sqliteErr.ExtendedCode == sqlite3.ErrConstraintPrimaryKey {
-				return models.Threat{}, fmt.Errorf("%s: %w", op, storage.ErrThreatExists)
+				return domain.Threat{}, fmt.Errorf("%s: %w", op, storage.ErrThreatExists)
 			}
 		}
-		return models.Threat{}, fmt.Errorf("%s: %w", op, err)
+		return domain.Threat{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return created, nil
+	return toDomain(m), nil
 }
 
-func (s *Storage) Update(ctx context.Context, t models.Threat) (models.Threat, error) {
+func (s *Storage) Update(ctx context.Context, t domain.Threat) (domain.Threat, error) {
 	const op = "storage.sqlite.Update"
 
-	row := s.updateThreatStmt.QueryRowContext(ctx,
-		t.Behavior, t.Platform, t.Family, t.FileSize, t.FileType, t.MD5,
+	m := toModel(t)
+	err := s.updateThreatStmt.QueryRowContext(ctx,
+		m.Behavior, m.Platform, m.Family, m.FileSize, m.FileType, m.MD5,
+	).Scan(
+		&m.MD5, &m.Behavior, &m.Platform, &m.Family,
+		&m.FileSize, &m.FileType, &m.CreatedAt,
 	)
 
-	var updated models.Threat
-	err := row.Scan(
-		&updated.MD5, &updated.Behavior, &updated.Platform, &updated.Family,
-		&updated.FileSize, &updated.FileType, &updated.CreatedAt,
-	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.Threat{}, fmt.Errorf("%s: %w", op, storage.ErrThreatNotFound)
+			return domain.Threat{}, fmt.Errorf("%s: %w", op, storage.ErrThreatNotFound)
 		}
-		return models.Threat{}, fmt.Errorf("%s: scan: %w", op, err)
+		return domain.Threat{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return updated, nil
+	return toDomain(m), nil
 }
