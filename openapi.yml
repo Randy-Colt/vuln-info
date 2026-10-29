@@ -147,8 +147,7 @@ components:
         name:
           type: string
           description: |
-            Название угрозы в формате Kaspersky: `<behavior>.<platform>.<family>[.<variant>]`.
-            Минимум три части, разделённые точкой.
+            Название угрозы в формате `<behavior>.<platform>.<family>`.
           example: "Trojan.Win32.Generic"
         file_size:
           type: integer
@@ -159,7 +158,7 @@ components:
         file_type:
           type: string
           nullable: true
-          description: Тип файла (pe, elf, script, ...). null или отсутствие — неизвестно.
+          description: Тип файла (pe, elf, script, ...). null или отсутствие — 'неизвестно'.
           example: "pe"
 
     ThreatUpdateRequest:
@@ -170,7 +169,8 @@ components:
       properties:
         name:
           type: string
-          description: То же, что и в ThreatCreateRequest — `<behavior>.<platform>.<family>[.<variant>]`
+          description: |
+            Название угрозы в формате `<behavior>.<platform>.<family>`.
           example: "Trojan.Win32.Generic"
         file_size:
           type: integer
@@ -180,7 +180,7 @@ components:
         file_type:
           type: string
           nullable: true
-          description: null или отсутствие — сбросить тип в null (PUT полностью заменяет запись).
+          description: Тип файла (pe, elf, script, ...). null или отсутствие — 'неизвестно'.
           example: "pe"
 
     ThreatResponse:
@@ -199,8 +199,7 @@ components:
         name:
           type: string
           description: |
-            Название угрозы, собранное как `<behavior>.<platform>.<family>`
-            из соответствующих полей хранилища.
+            Название угрозы в формате `<behavior>.<platform>.<family>`.
           example: "Trojan.Win32.Generic"
         file_size:
           type: integer
@@ -210,19 +209,13 @@ components:
         file_type:
           type: string
           nullable: true
-          description: null, если тип файла неизвестен
+          description: Тип файла (pe, elf, script, ...). Если не был передан при создании — 'неизвестно'.
           example: "pe"
         created_at:
           type: string
           format: date-time
           description: Время создания записи (UTC)
           example: "2024-01-15T10:30:45.123Z"
-        updated_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: Время последнего обновления (UTC). null, если запись ещё не обновлялась.
-          example: "2024-01-16T12:00:00.000Z"
 
     ErrorResponse:
       type: object
