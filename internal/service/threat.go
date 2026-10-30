@@ -15,12 +15,12 @@ type ThreatRepository interface {
 	Update(ctx context.Context, t domain.Threat) (domain.Threat, error)
 }
 
-type ThreatService struct {
+type Threat struct {
 	repo ThreatRepository
 }
 
-func NewThreatService(repo ThreatRepository) *ThreatService {
-	return &ThreatService{repo: repo}
+func New(repo ThreatRepository) *Threat {
+	return &Threat{repo: repo}
 }
 
 type CreateInput struct {
@@ -36,8 +36,8 @@ type UpdateInput struct {
 	FileType *string
 }
 
-func (s *ThreatService) Threat(ctx context.Context, md5 string) (domain.Threat, error) {
-	const op = "service.ThreatService.Threat"
+func (s *Threat) Threat(ctx context.Context, md5 string) (domain.Threat, error) {
+	const op = "service.threat.Threat"
 
 	md5 = normalizeMD5(md5)
 	if err := validateMD5(md5); err != nil {
@@ -54,8 +54,8 @@ func (s *ThreatService) Threat(ctx context.Context, md5 string) (domain.Threat, 
 	return t, nil
 }
 
-func (s *ThreatService) Create(ctx context.Context, in CreateInput) (domain.Threat, error) {
-	const op = "service.ThreatService.Create"
+func (s *Threat) Create(ctx context.Context, in CreateInput) (domain.Threat, error) {
+	const op = "service.threat.Create"
 
 	md5 := normalizeMD5(in.MD5)
 	if err := validateMD5(md5); err != nil {
@@ -90,8 +90,8 @@ func (s *ThreatService) Create(ctx context.Context, in CreateInput) (domain.Thre
 	return created, nil
 }
 
-func (s *ThreatService) Update(ctx context.Context, md5 string, in UpdateInput) (domain.Threat, error) {
-	const op = "service.ThreatService.Update"
+func (s *Threat) Update(ctx context.Context, md5 string, in UpdateInput) (domain.Threat, error) {
+	const op = "service.threat.Update"
 
 	md5 = normalizeMD5(md5)
 	if err := validateMD5(md5); err != nil {

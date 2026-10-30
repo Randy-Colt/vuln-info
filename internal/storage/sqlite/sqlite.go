@@ -153,3 +153,10 @@ func (s *Storage) Update(ctx context.Context, t domain.Threat) (domain.Threat, e
 
 	return toDomain(m), nil
 }
+
+func (s *Storage) Close() {
+	s.getThreatStmt.Close()
+	s.setThreatStmt.Close()
+	s.updateThreatStmt.Close()
+	s.db.Close()
+}
