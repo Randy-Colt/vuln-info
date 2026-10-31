@@ -1,17 +1,22 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"threat-info/internal/api"
 	"threat-info/internal/config"
-	"threat-info/internal/storage/sqlite"
 	"threat-info/internal/service"
-	
+	"threat-info/internal/storage/sqlite"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/oapi-codegen/nethttp-middleware"
 )
@@ -32,12 +37,11 @@ func main() {
 	svc := service.New(repo)
 	srv := api.New(svc)
 
-	swagger, err := api.GetSwagger()
+	swagger, err := api.GetSpec()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Валидация path-параметров (включая md5 по pattern) и тела запроса.
 	validator := nethttpmiddleware.OapiRequestValidator(swagger)
 
 	r := chi.NewRouter()
@@ -46,9 +50,38 @@ func main() {
 	strictHandler := api.NewStrictHandler(srv, nil)
 	r.Mount("/", api.Handler(strictHandler))
 
-	log.Println("listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
-	
+	httpServer := &http.Server{
+		Addr:    cfg.Address,
+		Handler: r,
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		logger.Info("listening on " + cfg.Address)
+		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case err := <-errCh:
+		log.Fatal("server failed: " + err.Error())
+	case sig := <-stop:
+		logger.Info("shutdown signal received", slog.String("signal", sig.String()))
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+	defer cancel()
+
+	if err := httpServer.Shutdown(ctx); err != nil {
+		logger.Error("graceful shutdown failed", slog.Any("error", err))
+	} else {
+		logger.Info("server stopped")
+	}
+
 	logger.Debug("logger debug mode enabled")
 }
 

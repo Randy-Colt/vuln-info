@@ -12,31 +12,28 @@ import (
 	"github.com/mattn/go-sqlite3"
 )
 
-
 type Storage struct {
-    db *sql.DB
-    getThreatStmt *sql.Stmt
-    setThreatStmt *sql.Stmt
-    updateThreatStmt *sql.Stmt
+	db               *sql.DB
+	getThreatStmt    *sql.Stmt
+	setThreatStmt    *sql.Stmt
+	updateThreatStmt *sql.Stmt
 }
 
-
 func New(storagePath string) (*Storage, error) {
-    const op = "storage.sqlite.New"
+	const op = "storage.sqlite.New"
 
-    db, err := sql.Open("sqlite3", storagePath)
-    if err != nil {
-        return nil, fmt.Errorf("%s: %w", op, err)
-    }
-    db.SetMaxOpenConns(1)
+	db, err := sql.Open("sqlite3", storagePath)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	db.SetMaxOpenConns(1)
 
-
-    if err := db.Ping(); err != nil {
+	if err := db.Ping(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("%s: ping: %w", op, err)
 	}
 
-    _, err = db.Exec(`
+	_, err = db.Exec(`
         CREATE TABLE IF NOT EXISTS threat(
             md5         TEXT PRIMARY KEY CHECK (length(md5) = 32),
             behavior    TEXT NOT NULL,
@@ -44,15 +41,15 @@ func New(storagePath string) (*Storage, error) {
             family      TEXT NOT NULL,
             file_size   INTEGER NOT NULL,
             file_type   TEXT,
-            created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+            created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
         );
     `)
-    if err != nil {
-        return nil, fmt.Errorf("%s: %w", op, err)
-    }
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
 
 	getStmt, err := db.Prepare(`
-		SELECT md5, behavior, platform, family, file_size, file_type, created_at, updated_at
+		SELECT md5, behavior, platform, family, file_size, file_type, created_at
 		FROM threat WHERE md5 = ?`)
 	if err != nil {
 		db.Close()
@@ -89,9 +86,8 @@ func New(storagePath string) (*Storage, error) {
 	}, nil
 }
 
-
 func (s *Storage) Threat(ctx context.Context, md5Hash string) (domain.Threat, error) {
-    const op = "storage.sqlite.Threat"
+	const op = "storage.sqlite.Threat"
 
 	row := s.getThreatStmt.QueryRowContext(ctx, md5Hash)
 

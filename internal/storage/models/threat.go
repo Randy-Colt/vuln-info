@@ -5,9 +5,8 @@ import (
 	"time"
 )
 
-
 type Threat struct {
-	MD5      string
+	MD5       string
 	Behavior  string
 	Platform  string
 	Family    string

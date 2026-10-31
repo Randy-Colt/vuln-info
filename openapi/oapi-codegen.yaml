@@ -5,5 +5,3 @@ generate:
   strict-server: true
   models: true
   embedded-spec: true
-output-options:
-  prefer-skip-optional-pointer: true
