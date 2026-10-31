@@ -18,6 +18,7 @@ import (
 	"threat-info/internal/storage/sqlite"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/swaggest/swgui/v5emb"
 	"github.com/oapi-codegen/nethttp-middleware"
 )
 
@@ -35,6 +36,7 @@ func main() {
 
 	logger.Info("initializing server", slog.String("address", cfg.Address))
 	svc := service.New(repo)
+
 	srv := api.New(svc)
 
 	swagger, err := api.GetSpec()
@@ -42,13 +44,21 @@ func main() {
 		log.Fatal(err)
 	}
 
-	validator := nethttpmiddleware.OapiRequestValidator(swagger)
-
 	r := chi.NewRouter()
-	r.Use(validator)
 
-	strictHandler := api.NewStrictHandler(srv, nil)
-	r.Mount("/", api.Handler(strictHandler))
+	r.Get("/openapi.json", api.ServeOpenAPI)
+	r.Mount("/docs", v5emb.New(
+		"Threat Info API",
+		"/openapi.json",
+		"/docs/",
+	))
+
+	r.Group(func(apiRouter chi.Router) {
+		apiRouter.Use(nethttpmiddleware.OapiRequestValidator(swagger)) 
+		
+		strictHandler := api.NewStrictHandler(srv, nil)
+		apiRouter.Mount("/", api.Handler(strictHandler))
+	})
 
 	httpServer := &http.Server{
 		Addr:    cfg.Address,

@@ -41,7 +41,7 @@ func New(storagePath string) (*Storage, error) {
             family      TEXT NOT NULL,
             file_size   INTEGER NOT NULL,
             file_type   TEXT,
-            created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+            created_at  DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
         );
     `)
 	if err != nil {

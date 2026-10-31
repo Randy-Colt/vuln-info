@@ -20,6 +20,8 @@ const (
 	InvalidNameDetails   = "name should be in the format <behavior>.<platform>.<family>"
 )
 
+var InternalServerError = errors.New("internal server error")
+
 func New(svc *service.Threat) *Server {
 	return &Server{svc: svc}
 }
@@ -33,7 +35,8 @@ func (s *Server) GetInfoByMd5(ctx context.Context, req GetInfoByMd5RequestObject
 			Details: new(fmt.Sprintf(NotFoundDetails, req.Md5)),
 		}, nil
 	case err != nil:
-		return nil, err
+		// return nil, err
+		return nil, InternalServerError
 	default:
 		return GetInfoByMd5200JSONResponse(toThreatResponse(t)), nil
 	}
@@ -58,7 +61,7 @@ func (s *Server) CreateThreat(ctx context.Context, req CreateThreatRequestObject
 			Details: new(InvalidNameDetails),
 		}, nil
 	case err != nil:
-		return nil, err
+		return nil, InternalServerError
 	default:
 		return CreateThreat201JSONResponse{
 			Body: toThreatResponse(t),
@@ -87,7 +90,7 @@ func (s *Server) UpdateThreat(ctx context.Context, req UpdateThreatRequestObject
 			Details: new(fmt.Sprintf(AlreadyExistsDetails, req.Md5)),
 		}, nil
 	case err != nil:
-		return nil, err
+		return nil, InternalServerError
 	}
 	return UpdateThreat200JSONResponse(toThreatResponse(t)), nil
 }
