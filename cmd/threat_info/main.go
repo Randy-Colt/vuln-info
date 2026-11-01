@@ -35,7 +35,7 @@ func main() {
 	defer repo.Close()
 
 	logger.Info("initializing server", slog.String("address", cfg.Address))
-	svc := service.New(repo)
+	svc := service.New(repo, logger)
 
 	srv := api.New(svc)
 

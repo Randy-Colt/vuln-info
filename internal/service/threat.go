@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"threat-info/internal/domain"
 	"threat-info/internal/storage"
@@ -16,11 +17,15 @@ type ThreatRepository interface {
 }
 
 type Threat struct {
-	repo ThreatRepository
+	repo   ThreatRepository
+	logger *slog.Logger
 }
 
-func New(repo ThreatRepository) *Threat {
-	return &Threat{repo: repo}
+func New(repo ThreatRepository, logger *slog.Logger) *Threat {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &Threat{repo: repo, logger: logger}
 }
 
 type CreateInput struct {
@@ -41,7 +46,7 @@ func (s *Threat) Threat(ctx context.Context, md5 string) (domain.Threat, error) 
 
 	md5 = normalizeMD5(md5)
 	if err := validateMD5(md5); err != nil {
-		return domain.Threat{}, fmt.Errorf("%s: %w", op, err) // domain.ErrInvalidMD5
+		return domain.Threat{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	t, err := s.repo.Threat(ctx, md5)
@@ -49,6 +54,11 @@ func (s *Threat) Threat(ctx context.Context, md5 string) (domain.Threat, error) 
 		return domain.Threat{}, fmt.Errorf("%s: %w", op, domain.ErrNotFound)
 	}
 	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to get threat",
+			slog.String("op", op),
+			slog.String("md5", md5),
+			slog.Any("error", err),
+		)
 		return domain.Threat{}, fmt.Errorf("%s: %w", op, err)
 	}
 	return t, nil
@@ -64,7 +74,7 @@ func (s *Threat) Create(ctx context.Context, in CreateInput) (domain.Threat, err
 
 	behavior, platform, family, err := parseName(in.Name)
 	if err != nil {
-		return domain.Threat{}, fmt.Errorf("%s: %w", op, err) // domain.ErrInvalidName
+		return domain.Threat{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if in.FileSize < 0 {
@@ -85,6 +95,11 @@ func (s *Threat) Create(ctx context.Context, in CreateInput) (domain.Threat, err
 		return domain.Threat{}, fmt.Errorf("%s: %w", op, domain.ErrAlreadyExists)
 	}
 	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to create threat",
+			slog.String("op", op),
+			slog.String("md5", md5),
+			slog.Any("error", err),
+		)
 		return domain.Threat{}, fmt.Errorf("%s: %w", op, err)
 	}
 	return created, nil
@@ -121,6 +136,11 @@ func (s *Threat) Update(ctx context.Context, md5 string, in UpdateInput) (domain
 		return domain.Threat{}, fmt.Errorf("%s: %w", op, domain.ErrNotFound)
 	}
 	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to update threat",
+			slog.String("op", op),
+			slog.String("md5", md5),
+			slog.Any("error", err),
+		)
 		return domain.Threat{}, fmt.Errorf("%s: %w", op, err)
 	}
 	return updated, nil
