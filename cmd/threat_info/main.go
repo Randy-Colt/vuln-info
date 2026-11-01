@@ -14,12 +14,12 @@ import (
 
 	"threat-info/internal/api"
 	"threat-info/internal/config"
+	"threat-info/internal/lib/middleware"
 	"threat-info/internal/service"
 	"threat-info/internal/storage/sqlite"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/swaggest/swgui/v5emb"
-	"github.com/oapi-codegen/nethttp-middleware"
 )
 
 func main() {
@@ -54,8 +54,8 @@ func main() {
 	))
 
 	r.Group(func(apiRouter chi.Router) {
-		apiRouter.Use(nethttpmiddleware.OapiRequestValidator(swagger)) 
-		
+		apiRouter.Use(middleware.Validator(swagger)) 
+
 		strictHandler := api.NewStrictHandler(srv, nil)
 		apiRouter.Mount("/", api.Handler(strictHandler))
 	})
