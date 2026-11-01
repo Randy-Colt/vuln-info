@@ -87,7 +87,7 @@ func (s *Server) UpdateThreat(ctx context.Context, req UpdateThreatRequestObject
 	case errors.Is(err, domain.ErrInvalidName):
 		return UpdateThreat400JSONResponse{
 			Message: domain.ErrInvalidName.Error(),
-			Details: new(fmt.Sprintf(AlreadyExistsDetails, req.Md5)),
+			Details: new(fmt.Sprintf(InvalidNameDetails, req.Md5)),
 		}, nil
 	case err != nil:
 		return nil, InternalServerError
