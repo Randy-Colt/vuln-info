@@ -19,6 +19,7 @@ import (
 	"threat-info/internal/storage/sqlite"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/httprate"
 	"github.com/swaggest/swgui/v5emb"
 )
 
@@ -45,6 +46,18 @@ func main() {
 	}
 
 	r := chi.NewRouter()
+
+	// rate limiter
+	r.Use(httprate.LimitBy(
+		cfg.RequestLimit,
+		time.Minute,
+		func(r *http.Request) (string, error) {
+        	return httprate.CanonicalizeIP(r.RemoteAddr), nil
+		},
+		httprate.WithLimitHandler(
+			http.HandlerFunc(middleware.FormateRateLimit),
+		),
+	))
 
 	r.Get("/openapi.json", api.ServeOpenAPI)
 	r.Mount("/docs", v5emb.New(
