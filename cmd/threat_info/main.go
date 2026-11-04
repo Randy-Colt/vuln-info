@@ -27,6 +27,7 @@ func main() {
 	cfg := config.MustLoad()
 
 	logger := setupLogger(cfg.LogLevel)
+	logger.Debug("logger debug mode enabled")
 
 	logger.Info("initializing database")
 	repo, err := sqlite.New("threats.db")
@@ -81,7 +82,7 @@ func main() {
 	errCh := make(chan error, 1)
 	go func() {
 		logger.Info("listening on " + cfg.Address)
-		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := httpServer.ListenAndServeTLS("certs/cert.pem", "certs/key.pem"); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}
 	}()
@@ -104,8 +105,6 @@ func main() {
 	} else {
 		logger.Info("server stopped")
 	}
-
-	logger.Debug("logger debug mode enabled")
 }
 
 func setupLogger(level string) *slog.Logger {

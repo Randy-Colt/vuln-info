@@ -58,9 +58,13 @@ go run ./cmd/threat-info/main.go
 # Docker
 ```
 docker build -t threat-info:dev .
-docker run --rm -p 8000:8000 -v threat-info-data:/data threat-info:dev
+docker run --rm \
+-p 8000:8000 \
+-v threat-info-data:/data \
+-v "certs/cert.pem:/usr/local/bin/certs/cert.pem:ro" \
+-v "certs/key.pem:/usr/local/bin/key.pem:ro" \
+threat-info:dev
 ```
-Named volume threat-info-data монтируется в /data — БД переживает пересоздание контейнера.
 
 ## Тесты
 

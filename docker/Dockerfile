@@ -29,7 +29,7 @@ RUN chown -R app:app /data
 
 USER app
 
-EXPOSE 8000
+EXPOSE 443
 
 VOLUME ["/data"]
 
