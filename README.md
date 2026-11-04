@@ -10,89 +10,44 @@ API для обмена информацией об угрозах (malware). С
 
 - oapi-codegen — генерация серверного кода и DTO из OpenAPI-спецификации.
 
-- slog — структурированное логирование.
+- slog — логирование.
 
 - nethttp-middleware — валидация запросов по спецификации.
 
-## Архитектура
-text
-             ┌─────────────┐
-HTTP/JSON ──▶│  api        │  chi + strict-server + validator
-             │  (handler)  │  маппинг api.* ↔ domain.*
-             └──────┬──────┘
-                    │
-                    ▼
-             ┌─────────────┐
-             │  service    │  валидация, парсинг name, нормализация
-             │  (Threat)   │  маппинг storage.Err* → domain.Err*
-             └──────┬──────┘
-                    │
-                    ▼
-             ┌─────────────┐
-             │  storage    │  SQL, prepared statements
-             │  (sqlite)   │  маппинг models.Threat ↔ domain.Threat
-             └─────────────┘
-Направление зависимостей — строго сверху вниз. api не импортирует storage, service не импортирует sqlite. Транспортные DTO (api.*) не протекают в бизнес-логику.
-
 ## Структура
-text
-.
-├── cmd/threat-info/         # точка входа
+```
+├── cmd/threat_info/main.go  # точка входа
+├── config/config.yml        # настрокйи приложения
+├── docker/Dockerfile        # докерфайл
 ├── internal/
-│   ├── api/                 # HTTP-хендлеры, маппинг ошибок в ответы
-│   │   └── api.gen.go       # сгенерировано oapi-codegen, не правится руками
-│   ├── config/              # загрузка конфигурации
+│   ├── api/                 # работа с HTTP API
+│   │   ├── api.gen.go       # сгенерировано oapi-codegen
+│   │   ├── api.go           # хендлеры
+│   │   └── doc.go           # отдача json для SwaggerUI
+│   ├── config/config.go     # пасрер конфигурации
 │   ├── domain/              # доменная модель и сентинел-ошибки
 │   ├── service/             # бизнес-логика
+│   │   ├── threat_test.go   # unit тесты
+│   │   ├── threat.go        # use cases
+│   │   └── validators.go    # валидаторы и нормализаторы
 │   └── storage/
+│       ├── errors.go        # ошибки БД
 │       ├── sqlite/          # реализация репозитория
-│       └── models/          # DB-модель (sql.Null[string], time.Time)
-├── openapi/openapi.yml      # спецификация API
-└── oapi-codegen.yaml        # конфигурация генератора
-
+│       └── models/          # БД-модель
+└── openapi/
+    ├── openapi.yml          # спецификация API
+    └── oapi-codegen.yaml    # конфигурация генератора
+```
 ## API
 Полная спецификация — openapi/openapi.yml. Интерактивная документация — http://localhost:8080/docs/ после запуска.
-
-Метод	Путь	Назначение
-GET	/info/{md5}	Получить запись по MD5
-POST	/info	Создать запись
-PUT	/info/{md5}	Обновить запись (полная замена)
-Примеры
-### Создание
-```
-curl -X POST http://localhost:8080/info \
-  -H 'Content-Type: application/json' \
-  -d '{"md5":"d41d8cd98f00b204e9800998ecf8427e","name":"Trojan.Win32.Generic","file_size":1024,"file_type":"pe"}'
-```
-
-# Получение
-```
-curl http://localhost:8080/info/d41d8cd98f00b204e9800998ecf8427e
-```
-
-# Обновление
-curl -X PUT http://localhost:8080/info/d41d8cd98f00b204e9800998ecf8427e \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Worm.Linux.Mirai","file_size":2048}'
-Ответы
-2xx — успех, тело — ThreatResponse.
-
-400 — невалидный MD5/имя/размер ({message, details}).
-
-404 — запись не найдена.
-
-409 — MD5 уже существует (только POST).
-
-500 — внутренняя ошибка.
 
 # Имя угрозы
 name парсится на три части по первым двум точкам: <behavior>.<platform>.<family>. Всё, что идёт после второй точки, попадает в family.
 
 # Валидация двухуровневая:
 
-md5 и file_size — проверяются nethttp-middleware по схеме из OpenAPI (pattern, minimum). До хендлера не доходят.
-
-name и бизнес-правила — проверяются в service. В спеке у name нет pattern, только описание формата.
+md5 и file_size — проверяются nethttp-middleware по схеме из OpenAPI (pattern, minimum).
+name проверяются в service.
 
 ## Запуск
 Локально
@@ -113,33 +68,9 @@ Named volume threat-info-data монтируется в /data — БД пере�
 ```
 go test ./... -race -count=1
 ```
-# Только юнит (интеграционные пропускаются через testing.Short)
+# Только юнит
 ```
 go test ./... -short -race
-```
-Юнит-тесты (internal/service) — бизнес-логика с фейковым репозиторием: нормализация MD5, парсинг имени, нормализация file_type, маппинг ошибок.
-
-Интеграционные (internal/storage/sqlite) — service + real SQLite в t.TempDir(): SQL, RETURNING, DEFAULT created_at, sql.Null[string].
-
-E2E (internal/api) — полный стек через httptest: chi, валидатор по спеке, strict-server, JSON и коды ответов.
-
-## Кодогенерация
-После правки openapi/openapi.yml:
-
-```
-oapi-codegen -config openapi/oapi-codegen.yaml openapi/openapi.yml
-```
-
-Конфигурация (oapi-codegen.yaml):
-
-```
-package: api
-output: internal/api/api.gen.go
-generate:
-  chi-server: true
-  strict-server: true
-  models: true
-  embedded-spec: true
 ```
 
 ## Решения и компромиссы
