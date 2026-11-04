@@ -12,25 +12,25 @@ COPY . .
 RUN CGO_ENABLED=1 GOOS=linux go build \
     -trimpath \
     -ldflags="-s -w" \
-    -o /out/threat-info \
-    ./cmd/threat-info
+    -o /out/threat_info \
+    ./cmd/threat_info/main.go
 
 FROM alpine:3.20
 
 RUN apk add --no-cache tzdata \
  && addgroup -S app \
- && adduser  -S app -G app
+ && adduser  -S app -G app \
+ && mkdir -p /data /app/certs \
+ && chown -R app:app /app
 
-WORKDIR /data
+WORKDIR /app
 
-COPY --from=build /out/threat-info /usr/local/bin/threat-info
-
-RUN chown -R app:app /data
+COPY --from=build /out/threat_info .
 
 USER app
 
-EXPOSE 443
+EXPOSE 8000
 
-VOLUME ["/data"]
+VOLUME ["/app/data"]
 
-ENTRYPOINT ["threat-info"]
+ENTRYPOINT ["/app/threat_info"]

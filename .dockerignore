@@ -1,0 +1,7 @@
+*.exe
+main
+.vscode/
+.idea/
+*.sqlite*
+*.md
+*test*

@@ -18,7 +18,6 @@ API для обмена информацией об угрозах (malware). С
 ```
 ├── cmd/threat_info/main.go  # точка входа
 ├── config/config.yml        # настрокйи приложения
-├── docker/Dockerfile        # докерфайл
 ├── internal/
 │   ├── api/                 # работа с HTTP API
 │   │   ├── api.gen.go       # сгенерировано oapi-codegen
@@ -35,8 +34,10 @@ API для обмена информацией об угрозах (malware). С
 │       ├── sqlite/          # реализация репозитория
 │       └── models/          # БД-модель
 └── openapi/
-    ├── openapi.yml          # спецификация API
-    └── oapi-codegen.yaml    # конфигурация генератора
+|   ├── openapi.yml          # спецификация API
+|   └── oapi-codegen.yaml    # конфигурация генератора
+└── Dockerfile               
+
 ```
 ## API
 Полная спецификация — openapi/openapi.yml. Интерактивная документация — http://localhost:8080/docs/ после запуска.
@@ -57,13 +58,25 @@ go run ./cmd/threat-info/main.go
 
 # Docker
 ```
-docker build -t threat-info:dev .
-docker run --rm \
--p 8000:8000 \
--v threat-info-data:/data \
--v "certs/cert.pem:/usr/local/bin/certs/cert.pem:ro" \
--v "certs/key.pem:/usr/local/bin/key.pem:ro" \
-threat-info:dev
+docker build -t threat-info .
+```
+Для Windows:
+```
+docker run --rm -p 8000:8000 ^
+  -v threat-info-data:/app/data ^
+  -v "%cd%\certs:/app/certs:ro" ^
+  -v "%cd%\config:/config:ro" ^
+  -e CONFIG_PATH=/config/config.yml ^
+  threat-info
+```
+Для Linux:
+```
+docker run --rm -p 8000:8000 \
+  -v threat-info-data:/app/data \
+  -v "$PWD/certs:/app/certs:ro" \
+  -v "$PWD/config:/config:ro" \
+  -e CONFIG_PATH=/config/config.yml \
+  threat-info
 ```
 
 ## Тесты

@@ -30,7 +30,7 @@ func main() {
 	logger.Debug("logger debug mode enabled")
 
 	logger.Info("initializing database")
-	repo, err := sqlite.New("threats.db")
+	repo, err := sqlite.New(cfg.StoragePath)
 	if err != nil {
 		log.Fatal(err)
 	}
